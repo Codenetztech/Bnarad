@@ -1,7 +1,8 @@
 // Berkya editorial publisher: password -> short-lived signed session.
 // Cloudflare secrets: GITHUB_TOKEN, ADMIN_PASSWORD, SESSION_SECRET.
 // Optional rate limit binding LOGIN_LIMITER (recommended).
-const BUILD="2026-11-27-github-v4";
+const BUILD="2026-11-27-remember-v5";
+const SHORT_SESSION=28800, REMEMBER_SESSION=30*86400;
 const REPO="Codenetztech/Bnarad", GH="https://api.github.com/repos/"+REPO;
 const ORIGINS=new Set(["https://www.berkya.com","https://berkya.com"]);
 const enc=new TextEncoder(),dec=new TextDecoder();
@@ -11,7 +12,7 @@ const from64=s=>Uint8Array.from(atob(s.replace(/-/g,"+").replace(/_/g,"/").padEn
 async function hash(s){return hex(await crypto.subtle.digest("SHA-256",enc.encode(s)))}
 function eq(a,b){if(a.length!==b.length)return false;let d=0;for(let i=0;i<a.length;i++)d|=a.charCodeAt(i)^b.charCodeAt(i);return d===0}
 async function sign(s,e){let k=await crypto.subtle.importKey("raw",enc.encode(e.SESSION_SECRET+"|"+await hash(e.ADMIN_PASSWORD)),{name:"HMAC",hash:"SHA-256"},false,["sign"]);return b64(await crypto.subtle.sign("HMAC",k,enc.encode(s)))}
-async function mint(e){let p=b64(enc.encode(JSON.stringify({sub:"admin",exp:Math.floor(Date.now()/1000)+28800,nonce:crypto.randomUUID()})));return p+"."+await sign(p,e)}
+async function mint(e,remember=false){let p=b64(enc.encode(JSON.stringify({sub:"admin",remember:remember===true,exp:Math.floor(Date.now()/1000)+(remember?REMEMBER_SESSION:SHORT_SESSION),nonce:crypto.randomUUID()})));return p+"."+await sign(p,e)}
 async function verify(t,e){try{if(!t||t.length>2048)return false;let [p,s,...rest]=t.split(".");if(rest.length||!p||!s||!eq(s,await sign(p,e)))return false;let j=JSON.parse(dec.decode(from64(p)));return j.sub==="admin"&&j.exp>Math.floor(Date.now()/1000)}catch{return false}}
 const allowedPath=p=>/^(news\.js|articles\.js|index\.html|berkya-layout\.json|berkya-media\.json)$/.test(p)||/^article\/[a-z0-9_-]{3,100}\.html$/.test(p)||/^assets\/(?:uploads|branding)\/[a-z0-9][a-z0-9_.-]{0,150}\.(?:jpg|jpeg|png|webp)$/i.test(p)||/^media\/[a-z0-9][a-z0-9_.-]{0,150}\.(?:jpg|jpeg|png|webp)$/i.test(p);
 const sha=s=>/^[0-9a-f]{40}$/i.test(s||"");
@@ -37,7 +38,15 @@ export default {async fetch(req,env){
    stage="login-password-check";
    let j=await req.json();if(typeof j.password!=="string"||j.password.length>256||j.username!=="admin"||!eq(await hash(j.password),await hash(env.ADMIN_PASSWORD)))return reply({error:"Invalid username or password"},401);
    stage="login-session-signing";
-   return reply({session:await mint(env),expiresIn:28800});
+   const remember=j.remember===true;return reply({session:await mint(env,remember),expiresIn:remember?REMEMBER_SESSION:SHORT_SESSION});
+ }
+ if(u.pathname==="/renew"){
+   stage="remember-session-renew";
+   const t=(req.headers.get("Authorization")||"").replace(/^Bearer\s+/i,"");
+   if(!await verify(t,env))return reply({error:"Login expired or invalid"},401);
+   const claims=JSON.parse(dec.decode(from64(t.split(".")[0])));
+   if(claims.remember!==true)return reply({error:"Remember PC requires a new login"},401);
+   return reply({session:await mint(env,true),expiresIn:REMEMBER_SESSION});
  }
  if(u.pathname!=="/github")return reply({error:"Not found"},404);
  stage="github-session-check";

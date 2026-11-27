@@ -320,10 +320,10 @@
   }
   const rememberKey='berkya-remember-session-v1';
   function clearRemember(){try{localStorage.removeItem(rememberKey)}catch{}}
-  function rememberSession(){try{if($('admin-remember-pc').checked)localStorage.setItem(rememberKey,JSON.stringify({token:state.token,expires:Date.now()+8*60*60*1000}));else clearRemember()}catch{}}
+  function rememberSession(){try{if($('admin-remember-pc').checked)localStorage.setItem(rememberKey,JSON.stringify({token:state.token,expires:Date.now()+30*24*60*60*1000}));else clearRemember()}catch{}}
   function unlockAdmin(){ $('admin-login-password').value='';$('admin-login-overlay').hidden=true;$('admin-login-overlay').style.display='none';document.body.classList.remove('admin-locked');document.body.classList.add('admin-key-verified');$('admin-login-feedback').textContent='';}
   async function restoreRemember(){let saved;try{saved=JSON.parse(localStorage.getItem(rememberKey)||'null')}catch{clearRemember()}if(!saved||typeof saved.token!=='string'||saved.expires<=Date.now()){clearRemember();return}
-    $('admin-login-username').value='admin';$('admin-remember-pc').checked=true;$('admin-login-submit').disabled=true;$('admin-login-feedback').textContent='Saved login तपासत आहे…';try{state.token=saved.token;if(!await load())throw Error(lastLoadError||'बातम्या लोड झाल्या नाहीत.');unlockAdmin()}catch(e){state.token='';if(/401|expired|invalid/i.test(String(e.message)))clearRemember();$('admin-login-feedback').textContent=e.message||'Saved login अयशस्वी.'}finally{$('admin-login-submit').disabled=false}}
+    $('admin-login-username').value='admin';$('admin-remember-pc').checked=true;$('admin-login-submit').disabled=true;$('admin-login-feedback').textContent='Saved login तपासत आहे…';try{state.token=await window.BerkyaAdapter.renew(saved.token);rememberSession();if(!await load())throw Error(lastLoadError||'बातम्या लोड झाल्या नाहीत.');unlockAdmin()}catch(e){state.token='';if(/401|expired|invalid/i.test(String(e.message)))clearRemember();$('admin-login-feedback').textContent=e.message||'Saved login अयशस्वी.'}finally{$('admin-login-submit').disabled=false}}
   function bind(){
     $('make-private-link')?.addEventListener('click',async()=>{
       const input=$('private-link-key');
@@ -339,7 +339,7 @@
         message('कॉपी करणे शक्य नाही. HTTPS मध्ये ब्राउझर Clipboard परवानगी तपासा.','error');
       }
     });
-    $('admin-login-form').addEventListener('submit',async e=>{e.preventDefault();let button=$('admin-login-submit'),feedback=$('admin-login-feedback');button.disabled=true;feedback.textContent='लॉगिन तपासत आहे…';try{state.token=await window.BerkyaAdapter.login($('admin-login-username').value.trim(),$('admin-login-password').value);rememberSession();if(!await load())throw Error(lastLoadError||'बातम्या लोड झाल्या नाहीत.');unlockAdmin();message('✅ सुरक्षित Worker Login यशस्वी.','success');}catch(e){state.token='';feedback.textContent=e.message||'Login अयशस्वी.'}finally{button.disabled=false}});
+    $('admin-login-form').addEventListener('submit',async e=>{e.preventDefault();let button=$('admin-login-submit'),feedback=$('admin-login-feedback');button.disabled=true;feedback.textContent='लॉगिन तपासत आहे…';try{state.token=await window.BerkyaAdapter.login($('admin-login-username').value.trim(),$('admin-login-password').value,$('admin-remember-pc').checked);rememberSession();if(!await load())throw Error(lastLoadError||'बातम्या लोड झाल्या नाहीत.');unlockAdmin();message('✅ सुरक्षित Worker Login यशस्वी.','success');}catch(e){state.token='';feedback.textContent=e.message||'Login अयशस्वी.'}finally{button.disabled=false}});
     $('admin-overlay-logout').addEventListener('click',()=>{clearRemember();state.token='';location.reload()});
     $('admin-change-password').addEventListener('click',()=>{message('पासवर्ड बदलण्यासाठी Cloudflare Worker मधील ADMIN_PASSWORD Secret अपडेट करा.');});
     $('refresh').addEventListener('click',load);
