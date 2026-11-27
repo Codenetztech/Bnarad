@@ -3,12 +3,5 @@
   "main": "backend/berkya-editor-worker.js",
   "compatibility_date": "2026-11-27",
   "workers_dev": true,
-  "keep_vars": true,
-  "secrets": {
-    "required": [
-      "GITHUB_TOKEN",
-      "ADMIN_PASSWORD",
-      "SESSION_SECRET"
-    ]
-  }
+  "keep_vars": true
 }
