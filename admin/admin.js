@@ -9,7 +9,7 @@
   let publishKey='';
   try{publishKey=decodeURIComponent(rawSecret).trim()}catch{publishKey=rawSecret.trim()}
   let workerURL='',workerMode=false,lastLoadError='';
-  const connected=()=>workerMode||!!state.token;
+  const connected=()=>!!state.token;
   const $=id=>document.getElementById(id);
   const state={token:'',news:[],newsSha:'',layout:{},layoutSha:'',activeSlug:'',filter:'all',selected:new Set(),busy:false,ready:false,photoUrl:''};
   const allowedSlug=/^[a-z0-9][a-z0-9_-]{2,95}$/;
@@ -33,44 +33,7 @@
     for(let i=0;i<bytes.length;i+=8192)result+=String.fromCharCode(...bytes.subarray(i,i+8192));
     return btoa(result);
   }
-  async function github(path,method='GET',payload=null){
-    if(method!=='GET'&&!connected())throw Error('प्रकाशनासाठी Server Access Token किंवा सुरक्षित Key Link आवश्यक आहे.');
-    const headers={'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'};
-    if(state.token)headers.Authorization='Bearer '+state.token;
-    if(payload)headers['Content-Type']='application/json';
-    // Cloudflare Worker holds the repository-scoped GitHub token in a Worker Secret.
-    // The user's short publication key is a bearer credential, never a GitHub token.
-    if(workerMode){
-      // Browser CORS: the Worker preflight does not allow GitHub-only version header.
-      // Worker itself supplies X-GitHub-Api-Version when contacting GitHub.
-      delete headers['X-GitHub-Api-Version'];
-      headers.Authorization='Bearer '+publishKey;
-      headers['Cache-Control']='no-store';
-    }
-    const url=workerMode?workerURL+'/github?path='+encodeURIComponent(path):
-      API+path+(method==='GET'?'?ref=main':'');
-    const response=await fetch(url,{
-      method,headers,cache:'no-store',referrerPolicy:'no-referrer',
-      ...(payload?{body:JSON.stringify(payload)}:{})
-    });
-    const data=await response.json().catch(()=>({}));
-    if(!response.ok){
-      if(response.status===401){
-        if(workerMode&&data.error==='Invalid publishing key')
-          throw Error('Cloudflare PUBLISH_KEY जुळत नाही. गुप्त Bookmark मधील Key तपासा.');
-        if(workerMode)throw Error('Server ने प्रकाशन जोडणी नाकारली. प्रकाशन Token ची परवानगी तपासा.');
-        throw Error('Server Access Token चुकीचा किंवा कालबाह्य झाला आहे.');
-      }
-      if(response.status===403)throw Error(workerMode?'Server Secret ची परवानगी तपासा.':'Server Publishing Token साठी Contents: Read and write परवानगी तपासा.');
-      if(response.status===404)throw Error('Server वर फाइल किंवा Repository सापडली नाही.');
-      if(response.status===409||response.status===422)throw Error('Server वर एकाच वेळी बदल झाला किंवा Slug/फाइल आधीच अस्तित्वात आहे. Refresh करा.');
-      // Worker responses describe the cause in "error", not GitHub's "message".
-      // Using the HTTP status alone previously hid the real cause as "GitHub: 502".
-      const detail=String(data.error||data.message||response.status).slice(0,240);
-      throw Error((workerMode?'Cloudflare Worker: ':'Server: ')+detail);
-    }
-    return data;
-  }
+  async function github(path,method='GET',payload=null){return window.BerkyaAdapter.api('/contents/'+path+(method==='GET'?'?ref=main':''),state.token,method,payload)}
   async function readJSON(path){return window.BerkyaAdapter.read(path,state.token)}
   async function writeJSON(path,value,sha,label){return window.BerkyaAdapter.write(path,value,sha,label,state.token)}
   function publicURL(slug){return SITE+'article/'+encodeURIComponent(slug)+'.html';}
@@ -362,15 +325,9 @@
         message('कॉपी करणे शक्य नाही. HTTPS मध्ये ब्राउझर Clipboard परवानगी तपासा.','error');
       }
     });
-    $('connect').addEventListener('click',async()=>{try{state.token=await window.BerkyaAdapter.unlock($('token').value.trim(),$('vault-password').value);if(!await load())throw Error('जोडणी अयशस्वी');$('token').value=$('vault-password').value='';document.body.classList.add('admin-key-verified');message('✅ सुरक्षित प्रकाशन जोडणी तयार.','success')}catch(e){state.token='';message(e.message,'error')}});
-    $('admin-overlay-logout').addEventListener('click',()=>{$('disconnect').click();load()});
-    $('admin-change-password').addEventListener('click',async()=>{try{if(!state.token)throw Error('आधी Admin Login करा.');let p=prompt('नवीन Admin password (किमान 8 अक्षरे)');if(p===null)return;await window.BerkyaAdapter.store(state.token,p);message('पासवर्ड बदलला.','success')}catch(e){message(e.message,'error')}});
-    $('disconnect').addEventListener('click',()=>{
-      state.token='';workerMode=false;publishKey='';workerURL='';$('token').value='';$('vault-password').value='';
-      document.body.classList.remove('admin-key-verified');
-      if(location.hash.startsWith('#key='))history.replaceState(null,'',location.pathname+location.search);
-      message('Publishing जोडणी बंद केली.');updateSelectedUI();
-    });
+    $('admin-login-form').addEventListener('submit',async e=>{e.preventDefault();let button=$('admin-login-submit'),feedback=$('admin-login-feedback');button.disabled=true;feedback.textContent='लॉगिन तपासत आहे…';try{state.token=await window.BerkyaAdapter.login($('admin-login-username').value.trim(),$('admin-login-password').value);if(!await load())throw Error(lastLoadError||'बातम्या लोड झाल्या नाहीत.');$('admin-login-password').value='';$('admin-login-overlay').hidden=true;$('admin-login-overlay').style.display='none';document.body.classList.remove('admin-locked');document.body.classList.add('admin-key-verified');message('✅ सुरक्षित Worker Login यशस्वी.','success');feedback.textContent=''}catch(e){state.token='';feedback.textContent=e.message||'Login अयशस्वी.'}finally{button.disabled=false}});
+    $('admin-overlay-logout').addEventListener('click',()=>{location.reload()});
+    $('admin-change-password').addEventListener('click',()=>{message('पासवर्ड बदलण्यासाठी Cloudflare Worker मधील ADMIN_PASSWORD Secret अपडेट करा.');});
     $('refresh').addEventListener('click',load);
     for(const id of ['new','new-top'])$(id).addEventListener('click',reset);
     $('search').addEventListener('input',renderList);
@@ -457,5 +414,5 @@
       message('🔒 Key Link जोडता आली नाही: '+detail,'error');
     }
   }
-  bind();window.BerkyaAdapter.configure();load();
+  bind();window.BerkyaAdapter.configure();
 })();

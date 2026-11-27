@@ -1,0 +1,4 @@
+{
+  "worker_url": "https://berkya-editor.catonpe.workers.dev",
+  "note": "Update worker_url if Cloudflare assigns a different hostname. No secrets here."
+}
