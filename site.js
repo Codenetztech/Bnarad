@@ -84,3 +84,33 @@ fetch(new URL('berkya-layout.json',document.baseURI),{cache:'no-store'}).then(r=
     event.preventDefault();
   }, true);
 })();
+
+// BERKYA_PAGE_VIEWS_V1 — anonymous, once per article per browser, no public display.
+(function(){
+ if(!["https://berkya.com","https://www.berkya.com"].includes(location.origin))return;
+ if(/(?:^|\/)admin(?:\/|$)/i.test(location.pathname))return;
+ const memory=new Map(), pending=new Set();
+ function track(){
+  if(document.visibilityState!=="visible")return;
+  const route=location.hash.slice(1)||(document.documentElement.dataset.article?"article/"+document.documentElement.dataset.article:"home");
+  if(!route.startsWith("article/"))return;
+  let slug;try{slug=decodeURIComponent(route.slice(8))}catch{return}
+  if(!/^[a-z0-9][a-z0-9_-]{2,95}$/.test(slug)||!all.some(a=>String(a.id)===slug)||pending.has(slug))return;
+  const key="berkya-pv-v1:"+slug;
+  let record=memory.get(slug);
+  try{record=JSON.parse(localStorage.getItem(key)||"null")||record}catch{}
+  if(record?.sent)return;
+  if(!record?.id){record={id:crypto.randomUUID(),sent:false};}
+  memory.set(slug,record);
+  try{localStorage.setItem(key,JSON.stringify(record))}catch{}
+  pending.add(slug);
+  fetch("https://bnarad.catonpe.workers.dev/page-view",{method:"POST",body:JSON.stringify({slug,reader:record.id}),headers:{"Content-Type":"text/plain"},keepalive:true,credentials:"omit",referrerPolicy:"no-referrer"}).then(r=>{
+   if(!r.ok)return;record.sent=true;
+   try{localStorage.setItem(key,JSON.stringify(record))}catch{}
+  }).catch(()=>{}).finally(()=>pending.delete(slug));
+ }
+ window.addEventListener("hashchange",track);
+ window.addEventListener("pageshow",track);
+ document.addEventListener("visibilitychange",track);
+ track();
+})();

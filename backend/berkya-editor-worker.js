@@ -1,7 +1,7 @@
 // Berkya editorial publisher: password -> short-lived signed session.
 // Cloudflare secrets: GITHUB_TOKEN, ADMIN_PASSWORD, SESSION_SECRET.
 // Optional rate limit binding LOGIN_LIMITER (recommended).
-const BUILD="2026-11-27-remember-v5";
+const BUILD="2026-11-27-pageviews-v1";
 const SHORT_SESSION=28800, REMEMBER_SESSION=30*86400;
 const REPO="Codenetztech/Bnarad", GH="https://api.github.com/repos/"+REPO;
 const ORIGINS=new Set(["https://www.berkya.com","https://berkya.com"]);
@@ -18,6 +18,23 @@ const allowedPath=p=>/^(news\.js|articles\.js|index\.html|berkya-layout\.json|be
 const sha=s=>/^[0-9a-f]{40}$/i.test(s||"");
 const attempts=new Map();
 function localLimit(ip){let now=Date.now(),a=attempts.get(ip);if(!a||a.until<now){a={n:0,until:now+60000};attempts.set(ip,a)}if(attempts.size>5000)for(let [k,v] of attempts){if(v.until<now)attempts.delete(k)}return ++a.n<=5}
+// Persistent article counts; anonymous per-article random browser keys prevent repeat counts.
+export class BerkyaPageViews {
+ constructor(ctx) {
+  this.sql=ctx.storage.sql;
+  this.sql.exec("CREATE TABLE IF NOT EXISTS counts (slug TEXT PRIMARY KEY, views INTEGER NOT NULL)");
+  this.sql.exec("CREATE TABLE IF NOT EXISTS seen (slug TEXT NOT NULL, reader TEXT NOT NULL, PRIMARY KEY(slug,reader))");
+ }
+ async fetch(req) {
+  if(req.method==="POST"){
+   const {slug,reader}=await req.json();
+   this.sql.exec("INSERT OR IGNORE INTO seen(slug,reader) VALUES (?,?)",slug,reader);
+   if(this.sql.exec("SELECT changes() AS n").one().n===1)this.sql.exec("INSERT INTO counts(slug,views) VALUES (?,1) ON CONFLICT(slug) DO UPDATE SET views=views+1",slug);
+   return new Response(null,{status:204});
+  }
+  return Response.json({counts:this.sql.exec("SELECT slug,views FROM counts").toArray()});
+ }
+}
 export default {async fetch(req,env){
  const u=new URL(req.url),origin=req.headers.get("Origin"),okOrigin=ORIGINS.has(origin),cors=okOrigin?{"Access-Control-Allow-Origin":origin,"Access-Control-Allow-Methods":"GET,POST,OPTIONS","Access-Control-Allow-Headers":"authorization,content-type","Access-Control-Max-Age":"600","Vary":"Origin"}:{"Vary":"Origin"};
  const reply=(obj,status=200)=>new Response(JSON.stringify(obj),{status,headers:{...cors,"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
@@ -25,6 +42,18 @@ export default {async fetch(req,env){
  const ready=!!env.GITHUB_TOKEN&&!!env.ADMIN_PASSWORD&&String(env.SESSION_SECRET||"").length>=32;
  if(u.pathname==="/health"&&req.method==="GET"){let session_test=false; if(ready){try{session_test=await verify(await mint(env),env)}catch{}} return reply({service:"berkya-editor",build:BUILD,ready,session_test});}
  if(!okOrigin)return reply({error:"Origin not allowed"},403);
+ if(u.pathname==="/page-view"&&req.method==="POST"){
+  if(!env.PAGE_VIEWS)return reply({error:"Page views unavailable"},503);
+  try{
+   const raw=await req.text();
+   if(raw.length>240)return reply({error:"Invalid page"},400);
+   const {slug,reader}=JSON.parse(raw);
+   if(typeof slug!=="string"||!/^[a-z0-9][a-z0-9_-]{2,95}$/.test(slug)||typeof reader!=="string"||!/^[a-f0-9-]{36}$/.test(reader))return reply({error:"Invalid page"},400);
+   const stub=env.PAGE_VIEWS.get(env.PAGE_VIEWS.idFromName("berkya-all"));
+   const r=await stub.fetch("https://counter.internal/",{method:"POST",body:JSON.stringify({slug,reader})});
+   return r.ok?new Response(null,{status:204,headers:{...cors,"Cache-Control":"no-store"}}):reply({error:"Counter unavailable"},503);
+  }catch{return reply({error:"Counter unavailable"},503)}
+ }
  if(!ready)return reply({error:"Worker secrets missing"},503);
  if(req.method!=="POST")return reply({error:"Method not allowed"},405);
  if(Number(req.headers.get("Content-Length")||0)>16*1024*1024)return reply({error:"Request too large"},413);
@@ -47,6 +76,15 @@ export default {async fetch(req,env){
    const claims=JSON.parse(dec.decode(from64(t.split(".")[0])));
    if(claims.remember!==true)return reply({error:"Remember PC requires a new login"},401);
    return reply({session:await mint(env,true),expiresIn:REMEMBER_SESSION});
+ }
+ if(u.pathname==="/page-view-stats"){
+  const session=(req.headers.get("Authorization")||"").replace(/^Bearer\s+/i,"");
+  if(!await verify(session,env))return reply({error:"Login expired or invalid"},401);
+  if(!env.PAGE_VIEWS)return reply({error:"Page views unavailable"},503);
+  const stub=env.PAGE_VIEWS.get(env.PAGE_VIEWS.idFromName("berkya-all"));
+  const r=await stub.fetch("https://counter.internal/");
+  if(!r.ok)return reply({error:"Counter unavailable"},503);
+  return reply(await r.json());
  }
  if(u.pathname!=="/github")return reply({error:"Not found"},404);
  stage="github-session-check";

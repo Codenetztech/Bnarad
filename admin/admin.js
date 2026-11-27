@@ -376,7 +376,15 @@
     });
   }
   window.DalalCMS={getNews:()=>state.news.slice(),getLayout:()=>structuredClone(state.layout),getSite:()=>SITE,
-    hasToken:()=>connected(),uploadMedia:async(file,path)=>uploadPhoto(file,path),
+    hasToken:()=>connected(),getPageViews:async()=>{
+      if(!state.token)throw Error('Admin Login आवश्यक.');
+      const cfg=await fetch('./config.json',{cache:'no-store'});if(!cfg.ok)throw Error('Worker config unavailable');
+      const u=new URL((await cfg.json()).worker_url);
+      if(u.protocol!=='https:'||!u.hostname.endsWith('.workers.dev'))throw Error('Worker URL invalid');
+      const r=await fetch(u.href.replace(/\/$/,'')+'/page-view-stats',{method:'POST',headers:{Authorization:'Bearer '+state.token},cache:'no-store'});
+      if(!r.ok)throw Error('Page Views सेवा उपलब्ध नाही ('+r.status+')');
+      return r.json();
+    },uploadMedia:async(file,path)=>uploadPhoto(file,path),
     loadMedia:async()=>readJSON('data/media.json'),saveMedia:async(media,sha)=>writeJSON('data/media.json',media,sha,'Update Berkya Narad media library'),
     uploadBrand:async(file,path)=>{
       if(!file||!/image\/(png|jpeg|webp)/.test(file.type)||file.size>5*1024*1024)throw Error('लोगो PNG, JPG किंवा WebP असावा (कमाल 5 MB).');

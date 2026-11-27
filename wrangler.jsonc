@@ -3,5 +3,21 @@
   "main": "backend/berkya-editor-worker.js",
   "compatibility_date": "2026-11-27",
   "workers_dev": true,
-  "keep_vars": true
+  "keep_vars": true,
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "PAGE_VIEWS",
+        "class_name": "BerkyaPageViews"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "pageviews-v1",
+      "new_sqlite_classes": [
+        "BerkyaPageViews"
+      ]
+    }
+  ]
 }
