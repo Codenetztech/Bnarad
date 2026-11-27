@@ -1,6 +1,7 @@
 // Berkya editorial publisher: password -> short-lived signed session.
 // Cloudflare secrets: GITHUB_TOKEN, ADMIN_PASSWORD, SESSION_SECRET.
 // Optional rate limit binding LOGIN_LIMITER (recommended).
+const BUILD="2026-11-27-login-v3";
 const REPO="Codenetztech/Bnarad", GH="https://api.github.com/repos/"+REPO;
 const ORIGINS=new Set(["https://www.berkya.com","https://berkya.com"]);
 const enc=new TextEncoder(),dec=new TextDecoder();
@@ -21,20 +22,25 @@ export default {async fetch(req,env){
  const reply=(obj,status=200)=>new Response(JSON.stringify(obj),{status,headers:{...cors,"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
  if(req.method==="OPTIONS")return okOrigin?new Response(null,{status:204,headers:cors}):reply({error:"Origin not allowed"},403);
  const ready=!!env.GITHUB_TOKEN&&!!env.ADMIN_PASSWORD&&String(env.SESSION_SECRET||"").length>=32;
- if(u.pathname==="/health"&&req.method==="GET")return reply({service:"berkya-editor",ready});
+ if(u.pathname==="/health"&&req.method==="GET"){let session_test=false; if(ready){try{session_test=await verify(await mint(env),env)}catch{}} return reply({service:"berkya-editor",build:BUILD,ready,session_test});}
  if(!okOrigin)return reply({error:"Origin not allowed"},403);
  if(!ready)return reply({error:"Worker secrets missing"},503);
  if(req.method!=="POST")return reply({error:"Method not allowed"},405);
  if(Number(req.headers.get("Content-Length")||0)>16*1024*1024)return reply({error:"Request too large"},413);
+ let stage="request";
  try{
  if(u.pathname==="/login"){
+   stage="login-rate-limit";
    let ip=req.headers.get("CF-Connecting-IP")||"unknown";
    let rate=env.LOGIN_LIMITER?await env.LOGIN_LIMITER.limit({key:ip}):{success:localLimit(ip)};
    if(!rate.success)return reply({error:"Too many login attempts. Try later."},429);
+   stage="login-password-check";
    let j=await req.json();if(typeof j.password!=="string"||j.password.length>256||j.username!=="admin"||!eq(await hash(j.password),await hash(env.ADMIN_PASSWORD)))return reply({error:"Invalid username or password"},401);
+   stage="login-session-signing";
    return reply({session:await mint(env),expiresIn:28800});
  }
  if(u.pathname!=="/github")return reply({error:"Not found"},404);
+ stage="github-session-check";
  const session=(req.headers.get("Authorization")||"").replace(/^Bearer\s+/i,"");
  if(!await verify(session,env))return reply({error:"Login expired or invalid"},401);
  let j=await req.json(),path=j.path,method=j.method||"GET",payload=j.payload;
@@ -51,7 +57,8 @@ export default {async fetch(req,env){
  if(method==="PATCH"&&path==="/git/refs/heads/main")permitted=sha(payload?.sha)&&payload.force===false;
  if(!permitted)return reply({error:"Repository path or action not allowed"},403);
  let headers={"Authorization":"Bearer "+env.GITHUB_TOKEN,"Accept":j.raw?"application/vnd.github.raw+json":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28","User-Agent":"Berkya-Editorial-Worker"};if(method!=="GET")headers["Content-Type"]="application/json";
+ stage="github-request";
  let r=await fetch(GH+path,{method,headers,redirect:"error",body:method==="GET"?undefined:JSON.stringify(payload)});
  let out=await r.text();return new Response(out,{status:r.status,headers:{...cors,"Content-Type":j.raw&&r.ok?"text/plain; charset=utf-8":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
- }catch(e){return reply({error:"Request could not be completed"},400)}
+ }catch(e){console.error("Berkya request failed",stage,e?.name||"Error");return reply({error:"Request failed at "+stage,build:BUILD},500)}
 }};
