@@ -6,3 +6,7 @@
 .share a,.share button{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:8px 13px;border-radius:5px;min-height:40px}.share svg{width:19px;height:19px;flex:none}.share .whatsapp{background:#128c4a;color:white;border-color:#128c4a}.share .fb{background:#1877f2;color:white;border-color:#1877f2}.share button{color:#303744;background:#f4f5f7}.share a:hover,.share button:hover{filter:brightness(.92)}
 .illustration-note{font-size:13px;color:#666;text-align:right;margin:4px 0 14px}
 .topgrid{align-items:start;margin-bottom:17px}.newscolumns{align-items:start}.lead-more{margin-top:8px}.lead-more .rowitem{padding:8px 0}.compact-sidebar .rowitem{padding:8px 0}.compact-sidebar .rowitem h3{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}.compact-sidebar .heading{margin-bottom:9px}.compact-sidebar .heading .more{font-size:12px}@media(max-width:760px){.topgrid{margin-bottom:16px}.lead-more{margin-top:7px}}
+
+/* Editorial subtitle below the article headline. */
+.article .article-subheading{font-family:'Mukta',sans-serif;font-size:23px;font-weight:600;line-height:1.45;color:#444;margin:0 0 16px;padding:0;overflow-wrap:anywhere}
+@media(max-width:760px){.article .article-subheading{font-size:19px;line-height:1.45;margin-bottom:12px}}
