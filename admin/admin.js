@@ -241,6 +241,14 @@
     setBusy(true);message('बातमी जतन करत आहे…');
     try{
       item.categories=[...new Set([item.category,...(old?.categories||[]).filter(c=>c!==old.category&&c!=='ताज्या बातम्या'),...($('also-latest').checked?['ताज्या बातम्या']:[]),...(item.featured?['मुख्य बातमी']:[])])];
+      if(mode==='draft'){
+        const list=JSON.parse(localStorage.getItem('berkya-local-drafts-v1')||'[]');
+        const nextDrafts=[item,...list.filter(p=>p.slug!==slug&&p.slug!==old?.slug)];
+        localStorage.setItem('berkya-local-drafts-v1',JSON.stringify(nextDrafts));
+        state.news=[item,...state.news.filter(p=>p.slug!==slug&&p.slug!==old?.slug)];state.activeSlug=slug;renderList();
+        window.dispatchEvent(new CustomEvent('dalal:news-updated',{detail:{news:state.news,layout:state.layout}}));
+        message('✅ मसुदा या PC वर जतन झाला.'+($('photo').files.length||files.length?' निवडलेले नवीन फोटो Publish करताना पुन्हा निवडा.':''),'success');return;
+      }
       const unique=Date.now().toString(36);
       if($('photo').files[0])item.image=await uploadPhoto($('photo').files[0],'assets/uploads/post-'+slug+'-'+unique+'.jpg');
       if(files.length){
@@ -310,6 +318,12 @@
     window.DalalPro?.renderPreview?.(root);
     if(typeof d.showModal==='function')d.showModal();
   }
+  const rememberKey='berkya-remember-session-v1';
+  function clearRemember(){try{localStorage.removeItem(rememberKey)}catch{}}
+  function rememberSession(){try{if($('admin-remember-pc').checked)localStorage.setItem(rememberKey,JSON.stringify({token:state.token,expires:Date.now()+8*60*60*1000}));else clearRemember()}catch{}}
+  function unlockAdmin(){ $('admin-login-password').value='';$('admin-login-overlay').hidden=true;$('admin-login-overlay').style.display='none';document.body.classList.remove('admin-locked');document.body.classList.add('admin-key-verified');$('admin-login-feedback').textContent='';}
+  async function restoreRemember(){let saved;try{saved=JSON.parse(localStorage.getItem(rememberKey)||'null')}catch{clearRemember()}if(!saved||typeof saved.token!=='string'||saved.expires<=Date.now()){clearRemember();return}
+    $('admin-login-username').value='admin';$('admin-remember-pc').checked=true;$('admin-login-submit').disabled=true;$('admin-login-feedback').textContent='Saved login तपासत आहे…';try{state.token=saved.token;if(!await load())throw Error(lastLoadError||'बातम्या लोड झाल्या नाहीत.');unlockAdmin()}catch(e){state.token='';if(/401|expired|invalid/i.test(String(e.message)))clearRemember();$('admin-login-feedback').textContent=e.message||'Saved login अयशस्वी.'}finally{$('admin-login-submit').disabled=false}}
   function bind(){
     $('make-private-link')?.addEventListener('click',async()=>{
       const input=$('private-link-key');
@@ -325,8 +339,8 @@
         message('कॉपी करणे शक्य नाही. HTTPS मध्ये ब्राउझर Clipboard परवानगी तपासा.','error');
       }
     });
-    $('admin-login-form').addEventListener('submit',async e=>{e.preventDefault();let button=$('admin-login-submit'),feedback=$('admin-login-feedback');button.disabled=true;feedback.textContent='लॉगिन तपासत आहे…';try{state.token=await window.BerkyaAdapter.login($('admin-login-username').value.trim(),$('admin-login-password').value);if(!await load())throw Error(lastLoadError||'बातम्या लोड झाल्या नाहीत.');$('admin-login-password').value='';$('admin-login-overlay').hidden=true;$('admin-login-overlay').style.display='none';document.body.classList.remove('admin-locked');document.body.classList.add('admin-key-verified');message('✅ सुरक्षित Worker Login यशस्वी.','success');feedback.textContent=''}catch(e){state.token='';feedback.textContent=e.message||'Login अयशस्वी.'}finally{button.disabled=false}});
-    $('admin-overlay-logout').addEventListener('click',()=>{location.reload()});
+    $('admin-login-form').addEventListener('submit',async e=>{e.preventDefault();let button=$('admin-login-submit'),feedback=$('admin-login-feedback');button.disabled=true;feedback.textContent='लॉगिन तपासत आहे…';try{state.token=await window.BerkyaAdapter.login($('admin-login-username').value.trim(),$('admin-login-password').value);rememberSession();if(!await load())throw Error(lastLoadError||'बातम्या लोड झाल्या नाहीत.');unlockAdmin();message('✅ सुरक्षित Worker Login यशस्वी.','success');}catch(e){state.token='';feedback.textContent=e.message||'Login अयशस्वी.'}finally{button.disabled=false}});
+    $('admin-overlay-logout').addEventListener('click',()=>{clearRemember();state.token='';location.reload()});
     $('admin-change-password').addEventListener('click',()=>{message('पासवर्ड बदलण्यासाठी Cloudflare Worker मधील ADMIN_PASSWORD Secret अपडेट करा.');});
     $('refresh').addEventListener('click',load);
     for(const id of ['new','new-top'])$(id).addEventListener('click',reset);
@@ -414,5 +428,5 @@
       message('🔒 Key Link जोडता आली नाही: '+detail,'error');
     }
   }
-  bind();window.BerkyaAdapter.configure();
+  bind();window.BerkyaAdapter.configure();restoreRemember();
 })();
