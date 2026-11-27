@@ -111,7 +111,7 @@ async function showPageViews(posts){
   const map=new Map(response.counts.map(x=>[String(x.slug),Number(x.views)||0]));
   total.textContent=[...map.values()].reduce((a,b)=>a+b,0).toLocaleString('en-IN');
   const rows=posts.filter(p=>p.published!==false&&p.status!=='draft').map(p=>({p,n:map.get(String(p.slug))||0})).sort((a,b)=>b.n-a.n||String(b.p.date).localeCompare(String(a.p.date)));
-  status.textContent='नवीन मोजणी सुरू झाल्यापासून';
+  status.textContent='';
   function draw(){
    list.replaceChildren();
    const q=search.value.trim().toLowerCase();
