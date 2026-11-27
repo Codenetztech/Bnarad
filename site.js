@@ -21,8 +21,8 @@ function articleSubheading(a,b){
  if(special[a.id])return special[a.id];
  let s=clean(a.summary);
  if(!s)return "";
- const sentence=s.match(/^.{45,220}?[.!?।](?=\s|$)/u);
- if(sentence)return sentence[0];
+ const sentences=[...s.matchAll(/[.!?।](?=\s|$)/gu)];
+ for(const m of sentences){const end=m.index+1;if(end<45||end>220)continue;const candidate=s.slice(0,end);if(/(?:डॉ|प्रा|श्री|कै|क्र|दि|ना|मा|सौ|कु|स्व|चि|अॅड|ॲड|इ|Dr|Mr|Mrs|Prof)\.$/iu.test(candidate))continue;return candidate;}
  if(s.length<=155&&/[.!?।]$/.test(s))return s;
  let cut=s.slice(0,155),last=cut.lastIndexOf(" ");
  if(last>60)cut=cut.slice(0,last);
