@@ -175,7 +175,7 @@
       state.selected.clear();renderList();renderLayout();
       if(state.activeSlug&&state.news.some(a=>a.slug===state.activeSlug))openPost(state.activeSlug);
       else reset();
-      message(state.news.length+' बातम्या लोड झाल्या. '+(connected()?'✅ सुरक्षित Publishing जोडणी तयार.':'संपादनासाठी Server Access Token किंवा Key Link जोडा.'),connected()?'success':'');
+      message(state.news.length+' बातम्या लोड झाल्या. '+(connected()?'✅ सुरक्षित Publishing जोडणी तयार.':'Demo Mode — पाहण्यासाठी खुले; प्रत्यक्ष बदलासाठी Admin Login.'),connected()?'success':'');
       window.dispatchEvent(new CustomEvent('dalal:news-updated',{detail:{news:state.news,layout:state.layout}}));
     return true;
     }catch(e){state.ready=false;lastLoadError=String(e.message||e);message('लोड करता आले नाही: '+lastLoadError,'error');return false}
@@ -362,11 +362,11 @@
         message('कॉपी करणे शक्य नाही. HTTPS मध्ये ब्राउझर Clipboard परवानगी तपासा.','error');
       }
     });
-    $('connect').addEventListener('click',async()=>{try{state.token=await window.BerkyaAdapter.unlock($('token').value.trim(),$('vault-password').value);if(!await load())throw Error('जोडणी अयशस्वी');$('token').value=$('vault-password').value='';message('✅ सुरक्षित प्रकाशन जोडणी तयार.','success')}catch(e){state.token='';message(e.message,'error')}});
+    $('connect').addEventListener('click',async()=>{try{state.token=await window.BerkyaAdapter.unlock($('token').value.trim(),$('vault-password').value);if(!await load())throw Error('जोडणी अयशस्वी');$('token').value=$('vault-password').value='';document.body.classList.add('admin-key-verified');message('✅ सुरक्षित प्रकाशन जोडणी तयार.','success')}catch(e){state.token='';message(e.message,'error')}});
     $('admin-overlay-logout').addEventListener('click',()=>{$('disconnect').click();load()});
     $('admin-change-password').addEventListener('click',async()=>{try{if(!state.token)throw Error('आधी Admin Login करा.');let p=prompt('नवीन Admin password (किमान 8 अक्षरे)');if(p===null)return;await window.BerkyaAdapter.store(state.token,p);message('पासवर्ड बदलला.','success')}catch(e){message(e.message,'error')}});
     $('disconnect').addEventListener('click',()=>{
-      state.token='';workerMode=false;publishKey='';workerURL='';$('token').value='';
+      state.token='';workerMode=false;publishKey='';workerURL='';$('token').value='';$('vault-password').value='';
       document.body.classList.remove('admin-key-verified');
       if(location.hash.startsWith('#key='))history.replaceState(null,'',location.pathname+location.search);
       message('Publishing जोडणी बंद केली.');updateSelectedUI();

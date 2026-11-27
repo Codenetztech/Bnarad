@@ -5,7 +5,7 @@
 <meta name="theme-color" content="#171717"><title>बेरक्या उर्फ नारद | News Admin Studio</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Mukta:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet"><link href="./admin.css?v=21" rel="stylesheet"></head><body>
+<link href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" rel="stylesheet"><link href="./admin.css?v=22" rel="stylesheet"></head><body>
 
 <header class="top"><a class="brand" href="../"><strong>बेरक्या <span>उर्फ नारद</span></strong><small>NEWS ADMIN STUDIO</small></a>
 <div class="top-actions"><button id="admin-overlay-logout" type="button" class="btn" title="या संगणकावरील Login विसरा">Log out</button><button id="admin-change-password" type="button" class="btn" title="Admin Login पासवर्ड बदला">🔑 Change Password</button><a class="btn" href="../" target="_blank" rel="noopener">🌐 Website</a><button id="refresh" type="button" class="btn">↻ Refresh</button><button id="new-top" type="button" class="btn primary">+ नवीन बातमी</button></div></header>
@@ -24,7 +24,7 @@
 <div class="heading"><div><h1>बातमी व्यवस्थापन</h1><p>बातम्या, मसुदे, फोटो, Custom URL आणि वेबसाइटचा लेआउट. · Demo: पाहण्यासाठी लॉगिन आवश्यक नाही.</p></div><div class="notice" id="status" role="status" aria-live="polite">Demo Mode — पाहण्यासाठी खुले.</div></div>
 
 <section class="card connect admin-onboarding">
- <div><b>🔐 स्वतंत्र Server Publishing</b><p>बेरक्या उर्फ नारदच्या स्वतंत्र फोल्डरमधील बातम्या प्रकाशित करण्यासाठी GitHub Repository Contents: Read and write परवानगी असलेला Token जोडा. Token सार्वजनिकपणे शेअर करू नका.</p></div>
+ <div><b>🔐 स्वतंत्र Server Publishing</b><p>बेरक्या उर्फ नारदच्या स्वतंत्र फोल्डरमधील बातम्या प्रकाशित करण्यासाठी GitHub Repository Contents: Read and write परवानगी असलेला Token जोडा. एकदाच token आणि स्वतःचा पासवर्ड द्या; पुढे त्याच ब्राउझरवर फक्त पासवर्ड. Token सार्वजनिकपणे शेअर करू नका.</p></div>
  <div class="connect-fields"><input id="token" type="password" spellcheck="false" autocomplete="off" placeholder="Publishing token — प्रथमच"><input id="vault-password" type="password" autocomplete="current-password" placeholder="तुमचा Admin password"><button id="connect" type="button" class="btn primary">Connect / Login</button><button id="disconnect" type="button" class="btn">Disconnect</button></div>
 </section>
 
@@ -91,7 +91,7 @@
  </section>
  <aside class="card notes"><div class="panel-head"><h2>⚙️ प्रकाशन सेटिंग्ज</h2></div><div class="panel-body">
 <label class="field">बातमीची सध्याची स्थिती<select id="post-status" form="post-form"><option value="published">Published — प्रकाशित</option><option value="draft">Draft — मसुदा</option></select></label>
-<p class="aside-hint">मसुद्यासाठी “Save Draft” आणि प्रकाशित करण्यासाठी “Publish / Update” वापरा.</p>
+<p class="aside-hint">मसुदे फक्त या ब्राउझरमध्ये जतन होतात; आधी प्रकाशित झालेली बातमी Draft केल्याने लाईव्ह बातमी हटत नाही.</p>
 <label class="checkbox-field"><input id="also-latest" type="checkbox" checked> ताज्या बातम्यांमध्येही दाखवा</label><label class="checkbox-field"><input id="featured" form="post-form" type="checkbox"> मुख्य बातमी (Featured)</label>
 <label class="field">Tags / Keywords<input id="tags" form="post-form" placeholder="राजकारण, जनहित, मराठवाडा"><small>स्वल्पविरामाने वेगळे करा.</small></label>
 <label class="field">YouTube व्हिडिओ URL<input id="video" form="post-form" type="url" placeholder="https://www.youtube.com/watch?v=..."></label>
@@ -154,7 +154,7 @@
 
 <dialog id="preview-dialog" class="preview-dialog"><div class="dialog-head"><h2 id="preview-title"></h2><button class="btn mini" type="button" id="close-preview">✕</button></div><div id="preview-content"></div></dialog>
 <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js" defer></script>
-<script src="./berkya-adapter.js?v=1" defer></script>
-<script src="./admin.js?v=21" defer></script>
-<script src="./admin-pro.js?v=21" defer></script>
+<script src="./berkya-adapter.js?v=2" defer></script>
+<script src="./admin.js?v=22" defer></script>
+<script src="./admin-pro.js?v=22" defer></script>
 </body></html>

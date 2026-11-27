@@ -206,7 +206,7 @@ function renderCustomization(o){
  set('columns-title',a.columnsTitle,'विभागवार बातम्या');
  const checks={'show-breaking':'showBreaking','show-weather':'showWeather','show-columns':'showColumns','show-related':'showRelated','show-category-sections':'showCategorySections'};
  for(const [id,key] of Object.entries(checks))$(id).checked=a[key]!==false;
- set('site-title',s.title,'बेरक्या उर्फ नारद | जनतेचा आवाज');
+ set('site-title',s.title,'बेरक्या उर्फ नारद | पत्रकारांच्या बातम्या देणारा पत्रकार');
  set('site-description',s.description,'बेरक्या उर्फ नारद — पत्रकारांच्या बातम्या देणारा पत्रकार');
  set('footer-statement',s.footerStatement,'सत्तेच्या प्रत्येक निर्णयाला प्रश्न, सार्वजनिक पैशाच्या प्रत्येक व्यवहाराला हिशेब! ठोस पुरावे, निर्भीड प्रश्न आणि जनतेच्या हक्कांसाठी सातत्यपूर्ण पाठपुरावा हीच बेरक्या उर्फ नारदची भूमिका.');
  set('footer-label',s.footerLabel,'स्वतंत्र मराठी डिजिटल न्यूज पोर्टल');
