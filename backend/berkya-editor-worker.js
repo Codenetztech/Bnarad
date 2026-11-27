@@ -9,7 +9,7 @@ const b64=b=>btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g,"-").
 const from64=s=>Uint8Array.from(atob(s.replace(/-/g,"+").replace(/_/g,"/").padEnd(Math.ceil(s.length/4)*4,"=")),x=>x.charCodeAt(0));
 async function hash(s){return hex(await crypto.subtle.digest("SHA-256",enc.encode(s)))}
 function eq(a,b){if(a.length!==b.length)return false;let d=0;for(let i=0;i<a.length;i++)d|=a.charCodeAt(i)^b.charCodeAt(i);return d===0}
-async function sign(s,e){let k=await crypto.subtle.importKey("raw",enc.encode(e.SESSION_SECRET+"|"+await hash(e.ADMIN_PASSWORD)),"HMAC",false,["sign"]);return b64(await crypto.subtle.sign("HMAC",k,enc.encode(s)))}
+async function sign(s,e){let k=await crypto.subtle.importKey("raw",enc.encode(e.SESSION_SECRET+"|"+await hash(e.ADMIN_PASSWORD)),{name:"HMAC",hash:"SHA-256"},false,["sign"]);return b64(await crypto.subtle.sign("HMAC",k,enc.encode(s)))}
 async function mint(e){let p=b64(enc.encode(JSON.stringify({sub:"admin",exp:Math.floor(Date.now()/1000)+28800,nonce:crypto.randomUUID()})));return p+"."+await sign(p,e)}
 async function verify(t,e){try{if(!t||t.length>2048)return false;let [p,s,...rest]=t.split(".");if(rest.length||!p||!s||!eq(s,await sign(p,e)))return false;let j=JSON.parse(dec.decode(from64(p)));return j.sub==="admin"&&j.exp>Math.floor(Date.now()/1000)}catch{return false}}
 const allowedPath=p=>/^(news\.js|articles\.js|index\.html|berkya-layout\.json|berkya-media\.json)$/.test(p)||/^article\/[a-z0-9_-]{3,100}\.html$/.test(p)||/^assets\/(?:uploads|branding)\/[a-z0-9][a-z0-9_.-]{0,150}\.(?:jpg|jpeg|png|webp)$/i.test(p)||/^media\/[a-z0-9][a-z0-9_.-]{0,150}\.(?:jpg|jpeg|png|webp)$/i.test(p);
