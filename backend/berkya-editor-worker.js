@@ -1,7 +1,7 @@
 // Berkya editorial publisher: password -> short-lived signed session.
 // Cloudflare secrets: GITHUB_TOKEN, ADMIN_PASSWORD, SESSION_SECRET.
 // Optional rate limit binding LOGIN_LIMITER (recommended).
-const BUILD="2026-11-27-login-v3";
+const BUILD="2026-11-27-github-v4";
 const REPO="Codenetztech/Bnarad", GH="https://api.github.com/repos/"+REPO;
 const ORIGINS=new Set(["https://www.berkya.com","https://berkya.com"]);
 const enc=new TextEncoder(),dec=new TextDecoder();
@@ -56,9 +56,17 @@ export default {async fetch(req,env){
  if(method==="POST"&&path==="/git/commits")permitted=sha(payload?.tree)&&Array.isArray(payload.parents)&&payload.parents.length===1&&sha(payload.parents[0])&&typeof payload.message==="string";
  if(method==="PATCH"&&path==="/git/refs/heads/main")permitted=sha(payload?.sha)&&payload.force===false;
  if(!permitted)return reply({error:"Repository path or action not allowed"},403);
- let headers={"Authorization":"Bearer "+env.GITHUB_TOKEN,"Accept":j.raw?"application/vnd.github.raw+json":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28","User-Agent":"Berkya-Editorial-Worker"};if(method!=="GET")headers["Content-Type"]="application/json";
+ stage="github-token-check";
+ const token=String(env.GITHUB_TOKEN||"").trim();
+ if(!/^[A-Za-z0-9_]+$/.test(token))return reply({error:"GitHub token contains invalid characters. Paste only the original token."},503);
+ const headers=new Headers({"Authorization":"Bearer "+token,"Accept":j.raw?"application/vnd.github.raw+json":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28","User-Agent":"Berkya-Editorial-Worker"});
+ const init={method,headers,redirect:"manual"};
+ if(method!=="GET"){headers.set("Content-Type","application/json");init.body=JSON.stringify(payload);}
  stage="github-request";
- let r=await fetch(GH+path,{method,headers,redirect:"error",body:method==="GET"?undefined:JSON.stringify(payload)});
- let out=await r.text();return new Response(out,{status:r.status,headers:{...cors,"Content-Type":j.raw&&r.ok?"text/plain; charset=utf-8":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
- }catch(e){console.error("Berkya request failed",stage,e?.name||"Error");return reply({error:"Request failed at "+stage,build:BUILD},500)}
+ let r=await globalThis.fetch(GH+path,init);
+ if(r.status>=300&&r.status<400)return reply({error:"GitHub API redirect refused; verify the repository URL.",upstream_status:r.status},502);
+ stage="github-response";
+ if(!r.ok){let msg=r.status===401?"GitHub rejected the token. Check its value or expiry.":r.status===403?"GitHub denied access. Check repository Contents permissions and rate limit.":r.status===404?"GitHub repository or file not found.":r.status===429?"GitHub rate limit exceeded.":"GitHub API returned HTTP "+r.status;return reply({error:msg,upstream_status:r.status},r.status);}
+ let out=await r.text();return new Response(r.status===204||r.status===205?null:out,{status:r.status,headers:{...cors,"Content-Type":j.raw?"text/plain; charset=utf-8":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
+ }catch(e){console.error("Berkya request failed",stage,e?.name||"Error");return reply({error:"Request failed at "+stage+" ("+(["TypeError","NetworkError","AbortError","SyntaxError","RangeError"].includes(e?.name)?e.name:"Error")+")",build:BUILD},500)}
 }};
