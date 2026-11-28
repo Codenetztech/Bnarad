@@ -1,4 +1,4 @@
-function renderFooterCategories(items){const archive='<a href="https://berkyanarad.blogspot.com/" target="_blank" rel="noopener noreferrer">जुन्या बातम्या वाचा</a>';const links=items.map(c=>'<a href="'+route(c)+'">'+esc(c)+'</a>'+(c==="फोटो"?archive:"")).join("");el("footcategories").innerHTML=links+(items.includes("फोटो")?"":archive);}
+function renderFooterCategories(items){const archive='<a href="https://berkyanarad.blogspot.com/" target="_blank" rel="noopener noreferrer">जुन्या बातम्या वाचा</a>';const links=items.map(c=>'<a href="'+route(c)+'">'+esc(c)+'</a>').join("");el("footcategories").innerHTML=links+archive;}
 // Remove the retired footer tagline on every page, including older article HTML.
 for (const p of document.querySelectorAll("footer.footer p")) { if (p.textContent.trim() === "मराठी पत्रकारिता व माध्यमविश्वातील घडामोडी.") p.remove(); }
 
